@@ -3,6 +3,7 @@ package jp.co.cyberagent.stf;
 import android.Manifest;
 import android.app.Notification;
 import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -374,6 +375,15 @@ public class Service extends android.app.Service {
         }
     }
 
+
+    private void startSetupView() {
+        Intent mIntent = new Intent();
+        ComponentName comp = new ComponentName("com.android.settings", "com.android.settings.DevelopmentSettings");
+        mIntent.setComponent(comp);
+        mIntent.setAction("android.intent.action.VIEW");
+        startActivity(mIntent);
+    }
+
     /**
      * Monitors the adb state by checking /sys/class/android_usb/android0/state
      * <p>
@@ -391,6 +401,10 @@ public class Service extends android.app.Service {
             String state = "";
             try {
                 while (!isInterrupted()) {
+
+                    // Log.d(TAG, "am start -n jp.co.cyberagent.stf/.IdentityActivity");
+                    // Runtime.getRuntime().exec("am start -n jp.co.cyberagent.stf/.IdentityActivity");
+
                     /**
                      * In order for the monitor to work you need to grant DUMP permission for
                      * the apk, e.g.
@@ -419,6 +433,8 @@ public class Service extends android.app.Service {
                             }
                         }
 
+                        Log.d(TAG, "Current state: " + currentState);
+
                         if (!currentState.equals(state)) {
                             Log.d(TAG, "Kernel state changed to" + currentState);
                             state = currentState;
@@ -426,7 +442,9 @@ public class Service extends android.app.Service {
 
                         boolean disconnected = state.contains("DISCONNECTED");
                         if (disconnected) {
-                            startActivity(new Intent(getApplication(), IdentityActivity.class));
+                            Log.d(TAG, "Start activity for STFService");
+                            // startActivity(new Intent(getApplication(), IdentityActivity.class));
+                            startSetupView();
                         }
 
                         adbdStateReader.close();

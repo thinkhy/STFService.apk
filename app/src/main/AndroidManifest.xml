@@ -36,9 +36,15 @@
             android:stateNotNeeded="true"
             android:excludeFromRecents="true">
             <intent-filter>
-                <action android:name="jp.co.cyberagent.stf.ACTION_IDENTIFY"/>
-                <category android:name="android.intent.category.DEFAULT"/>
+                <!--<action android:name="jp.co.cyberagent.stf.ACTION_IDENTIFY"/>-->
+                <!--<category android:name="android.intent.category.DEFAULT"/> -->
+              <action android:name="android.intent.action.MAIN" />
+              <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+          <intent-filter>
+              <action android:name="jp.co.cyberagent.stf.ACTION_IDENTIFY"/>
+              <category android:name="android.intent.category.DEFAULT"/>
+          </intent-filter>
         </activity>
 
         <activity android:name=".IconActivity"
