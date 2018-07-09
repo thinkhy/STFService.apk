@@ -444,7 +444,9 @@ public class Service extends android.app.Service {
                         if (disconnected) {
                             Log.d(TAG, "Start activity for STFService");
                             // startActivity(new Intent(getApplication(), IdentityActivity.class));
-                            startSetupView();
+                            // startSetupView();
+                            getApplication().startActivity(
+                                new IdentityActivity.IntentBuilder().build(getApplication()));
                         }
 
                         adbdStateReader.close();
