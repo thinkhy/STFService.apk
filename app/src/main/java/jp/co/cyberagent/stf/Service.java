@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import jp.co.cyberagent.stf.io.MessageReader;
 import jp.co.cyberagent.stf.io.MessageRouter;
@@ -375,15 +377,6 @@ public class Service extends android.app.Service {
         }
     }
 
-
-    private void startSetupView() {
-        Intent mIntent = new Intent();
-        ComponentName comp = new ComponentName("com.android.settings", "com.android.settings.DevelopmentSettings");
-        mIntent.setComponent(comp);
-        mIntent.setAction("android.intent.action.VIEW");
-        startActivity(mIntent);
-    }
-
     /**
      * Monitors the adb state by checking /sys/class/android_usb/android0/state
      * <p>
@@ -398,10 +391,22 @@ public class Service extends android.app.Service {
         @Override
         public void run() {
             Log.d(TAG, "Starting adb monitor thread");
-            String state = "";
+
+            /**
+             * If the output of the command will change then by default device will be
+             * considered connected
+             */
+            String lastUsbState = "";
+            String currentUsbState = "";
+
+            String lastAdbState = "";
+            String currentAdbState = "";
+
+            Pattern adbStatePattern = Pattern.compile(".*Current.*Functions:.*");
+            Pattern usbStatePattern = Pattern.compile(".*Kernel.*state.*");
+
             try {
                 while (!isInterrupted()) {
-
                     // Log.d(TAG, "am start -n jp.co.cyberagent.stf/.IdentityActivity");
                     // Runtime.getRuntime().exec("am start -n jp.co.cyberagent.stf/.IdentityActivity");
 
@@ -420,31 +425,35 @@ public class Service extends android.app.Service {
 
                         java.lang.Process process = Runtime.getRuntime().exec(cmd);
 
-                        /**
-                         * If the output of the command will change then by default device will be
-                         * considered connected
-                         */
-                        String currentState = "";
+
                         BufferedReader adbdStateReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                         for (String line = adbdStateReader.readLine(); line != null; line = adbdStateReader.readLine()) {
-                            if (line.contains("Kernel state:")) {
-                                currentState = line.split(":").length == 2 ? line.split(":")[1] : "";
-                                break;
+                            if (adbStatePattern.matcher(line).lookingAt()) {
+                                currentAdbState = line.split(":").length == 2 ? line.split(":")[1] : "";
+                            }
+                            else if (usbStatePattern.matcher(line).lookingAt()) {
+                                currentUsbState = line.split(":").length == 2 ? line.split(":")[1] : "";
                             }
                         }
 
-                        Log.d(TAG, "Current state: " + currentState);
-
-                        if (!currentState.equals(state)) {
-                            Log.d(TAG, "Kernel state changed to" + currentState);
-                            state = currentState;
+                        if (!currentUsbState.equals(lastUsbState)) {
+                            Log.d(TAG, "Kernel state changed to" + currentUsbState);
+                            lastUsbState = currentUsbState;
                         }
 
-                        boolean disconnected = state.contains("DISCONNECTED");
-                        if (disconnected) {
+                        if (!currentAdbState.equals(lastAdbState)) {
+                            Log.d(TAG, "adb state changed to" + currentAdbState);
+                            lastAdbState = currentAdbState;
+                        }
+
+                        boolean disconnected = lastUsbState.contains("DISCONNECTED");
+                        boolean adbEnabled = currentAdbState.contains("adb");
+                        // Log.d(TAG, "+++ Disconnected: " + disconnected);
+                        // Log.d(TAG, "+++ Adb state: " + adbEnabled);
+
+                        if (disconnected || !adbEnabled) {
+                        // if (connected) {
                             Log.d(TAG, "Start activity for STFService");
-                            // startActivity(new Intent(getApplication(), IdentityActivity.class));
-                            // startSetupView();
                             getApplication().startActivity(
                                 new IdentityActivity.IntentBuilder().build(getApplication()));
                         }
