@@ -17,14 +17,14 @@ public class GetRootStatusResponder extends AbstractResponder {
 
     @Override
     public GeneratedMessageLite respond(Wire.Envelope envelope) {
-        boolean root_flag = isDeviceRooted();
+        boolean rootFlag = isDeviceRooted();
 
         return Wire.Envelope.newBuilder()
             .setId(envelope.getId())
-            .setType(Wire.MessageType.GET_WIFI_STATUS)
+            .setType(Wire.MessageType.GET_ROOT_STATUS)
             .setMessage(Wire.GetWifiStatusResponse.newBuilder()
                 .setSuccess(true)
-                .setStatus(root_flag)
+                .setStatus(rootFlag)
                 .build()
                 .toByteString())
             .build();
