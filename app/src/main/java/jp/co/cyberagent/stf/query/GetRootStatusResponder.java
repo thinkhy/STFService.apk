@@ -22,7 +22,7 @@ public class GetRootStatusResponder extends AbstractResponder {
         return Wire.Envelope.newBuilder()
             .setId(envelope.getId())
             .setType(Wire.MessageType.GET_ROOT_STATUS)
-            .setMessage(Wire.GetWifiStatusResponse.newBuilder()
+            .setMessage(Wire.GetRootStatusResponse.newBuilder()
                 .setSuccess(true)
                 .setStatus(rootFlag)
                 .build()
