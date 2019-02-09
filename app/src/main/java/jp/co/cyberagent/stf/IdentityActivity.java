@@ -148,11 +148,20 @@ public class IdentityActivity extends Activity {
         }
 
         public Intent build(Context context) {
+<<<<<<< HEAD
             Intent intent = new Intent(context.getApplicationContext(), IdentityActivity.class);
+=======
+            Intent intent = new Intent(context.getApplicationContext(),
+                IdentityActivity.class);
+>>>>>>> 7b40f0a4dad7f9a768ba30737684c917a57b593c
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             if (serial != null) {
                 intent.putExtra(IdentityActivity.EXTRA_SERIAL, serial);
             }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7b40f0a4dad7f9a768ba30737684c917a57b593c
             return intent;
         }
     }

@@ -26,8 +26,13 @@ android {
     defaultConfig {
         minSdkVersion 9
         targetSdkVersion 22
+<<<<<<< HEAD
         versionCode 7
         versionName "2.4.0"
+=======
+        versionCode 4
+        versionName "2.2.0"
+>>>>>>> 7b40f0a4dad7f9a768ba30737684c917a57b593c
         applicationId "jp.co.cyberagent.stf"
     }
 

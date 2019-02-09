@@ -3,6 +3,7 @@ package jp.co.cyberagent.stf;
 import android.Manifest;
 import android.app.Notification;
 import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -25,6 +26,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import jp.co.cyberagent.stf.io.MessageReader;
 import jp.co.cyberagent.stf.io.MessageRouter;
@@ -400,10 +403,30 @@ public class Service extends android.app.Service {
         @Override
         public void run() {
             Log.d(TAG, "Starting adb monitor thread");
+<<<<<<< HEAD
             String lastUsbState = "";
             String lastAdbState = "";
+=======
+
+            /**
+             * If the output of the command will change then by default device will be
+             * considered connected
+             */
+            String lastUsbState = "";
+            String currentUsbState = "";
+
+            String lastAdbState = "";
+            String currentAdbState = "";
+
+            Pattern adbStatePattern = Pattern.compile(".*Current.*Functions:.*");
+            Pattern usbStatePattern = Pattern.compile(".*Kernel.*state.*");
+
+>>>>>>> 7b40f0a4dad7f9a768ba30737684c917a57b593c
             try {
                 while (!isInterrupted()) {
+                    // Log.d(TAG, "am start -n jp.co.cyberagent.stf/.IdentityActivity");
+                    // Runtime.getRuntime().exec("am start -n jp.co.cyberagent.stf/.IdentityActivity");
+
                     /**
                      * In order for the monitor to work you need to grant DUMP permission for
                      * the apk, e.g.
@@ -419,6 +442,7 @@ public class Service extends android.app.Service {
 
                         java.lang.Process process = Runtime.getRuntime().exec(cmd);
 
+<<<<<<< HEAD
                         /**
                          * If the output of the command will change then by default device will be
                          * considered connected
@@ -430,6 +454,15 @@ public class Service extends android.app.Service {
                             if (line.contains("Current Functions:") || line.contains("mCurrentFunctions:")) {
                                 currentAdbState = line.split(":").length == 2 ? line.split(":")[1] : "";
                             } else if (line.contains("Kernel state:")) {
+=======
+
+                        BufferedReader adbdStateReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                        for (String line = adbdStateReader.readLine(); line != null; line = adbdStateReader.readLine()) {
+                            if (adbStatePattern.matcher(line).lookingAt()) {
+                                currentAdbState = line.split(":").length == 2 ? line.split(":")[1] : "";
+                            }
+                            else if (usbStatePattern.matcher(line).lookingAt()) {
+>>>>>>> 7b40f0a4dad7f9a768ba30737684c917a57b593c
                                 currentUsbState = line.split(":").length == 2 ? line.split(":")[1] : "";
                             }
                         }
@@ -437,6 +470,7 @@ public class Service extends android.app.Service {
                         if (!currentUsbState.equals(lastUsbState)) {
                             Log.d(TAG, "Kernel state changed to" + currentUsbState);
                             lastUsbState = currentUsbState;
+<<<<<<< HEAD
                         }
 
                         if (!currentAdbState.equals(lastAdbState)) {
@@ -449,6 +483,25 @@ public class Service extends android.app.Service {
                         if (disconnected || !adbEnabled) {
                             Log.d(TAG, "Start activity for STFService");
                             getApplication().startActivity(new IdentityActivity.IntentBuilder().build(getApplication()));
+=======
+                        }
+
+                        if (!currentAdbState.equals(lastAdbState)) {
+                            Log.d(TAG, "adb state changed to" + currentAdbState);
+                            lastAdbState = currentAdbState;
+                        }
+
+                        boolean disconnected = lastUsbState.contains("DISCONNECTED");
+                        boolean adbEnabled = currentAdbState.contains("adb");
+                        // Log.d(TAG, "+++ Disconnected: " + disconnected);
+                        // Log.d(TAG, "+++ Adb state: " + adbEnabled);
+
+                        if (disconnected || !adbEnabled) {
+                        // if (connected) {
+                            Log.d(TAG, "Start activity for STFService");
+                            getApplication().startActivity(
+                                new IdentityActivity.IntentBuilder().build(getApplication()));
+>>>>>>> 7b40f0a4dad7f9a768ba30737684c917a57b593c
                         }
 
                         adbdStateReader.close();
