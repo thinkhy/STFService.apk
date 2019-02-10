@@ -228,6 +228,7 @@ public class Service extends android.app.Service {
 
     private void removeActions() {
         String fileContent = FileHelper.ReadFile();
+        if (fileContent == null) return;
         if (fileContent.contains("starting")) {
             String[] separated = fileContent.split(" ");
             String id = separated[1];
