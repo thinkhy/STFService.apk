@@ -386,6 +386,9 @@ public class Service extends android.app.Service {
                     router.register(Wire.MessageType.GET_BLUETOOTH_STATUS,
                         new GetBluetoothStatusResponder(getBaseContext()));
 
+                    router.register(Wire.MessageType.GET_ROOT_STATUS,
+                        new GetRootStatusResponder(getBaseContext()));
+
                     router.register(Wire.MessageType.SET_CLIPBOARD,
                         new SetClipboardResponder(getBaseContext()));
 
