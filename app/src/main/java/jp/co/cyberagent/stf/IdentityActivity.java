@@ -20,22 +20,12 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
-import android.widget.TabHost;
 import android.widget.TextView;
 
-import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import jp.co.cyberagent.stf.api.APIClient;
-import jp.co.cyberagent.stf.io.FileHelper;
 import jp.co.cyberagent.stf.query.GetRootStatusResponder;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-
-import static jp.co.cyberagent.stf.io.FileHelper.fileName;
-import static jp.co.cyberagent.stf.io.FileHelper.path;
 
 public class IdentityActivity extends Activity {
     private static final String TAG = "IdentityActivity";
