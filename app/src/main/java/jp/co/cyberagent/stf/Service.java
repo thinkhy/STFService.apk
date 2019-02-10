@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.LocalServerSocket;
 import android.net.LocalSocket;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.Process;
 import android.support.v4.app.NotificationCompat;
@@ -18,6 +19,8 @@ import android.util.Log;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.UnknownHostException;
@@ -70,7 +73,10 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import static java.lang.System.getProperty;
 import static jp.co.cyberagent.stf.IdentityActivity.EXTRA_SERIAL;
+import static jp.co.cyberagent.stf.io.FileHelper.fileName;
+import static jp.co.cyberagent.stf.io.FileHelper.path;
 
 public class Service extends android.app.Service {
     public static final String ACTION_START = "jp.co.cyberagent.stf.ACTION_START";
@@ -108,15 +114,17 @@ public class Service extends android.app.Service {
 
         Intent notificationIntent = new Intent(this, IdentityActivity.class);
         Notification notification = new NotificationCompat.Builder(this)
-                .setSmallIcon(android.R.drawable.ic_menu_info_details)
-                .setTicker(getString(R.string.service_ticker))
-                .setContentTitle(getString(R.string.service_title))
-                .setContentText(getString(R.string.service_text))
-                .setContentIntent(PendingIntent.getActivity(this, 0, notificationIntent, 0))
-                .setWhen(System.currentTimeMillis())
-                .build();
+            .setSmallIcon(android.R.drawable.ic_menu_info_details)
+            .setTicker(getString(R.string.service_ticker))
+            .setContentTitle(getString(R.string.service_title))
+            .setContentText(getString(R.string.service_text))
+            .setContentIntent(PendingIntent.getActivity(this, 0, notificationIntent, 0))
+            .setWhen(System.currentTimeMillis())
+            .build();
 
         startForeground(NOTIFICATION_ID, notification);
+
+        removeActions();
     }
 
     @Override
@@ -130,8 +138,7 @@ public class Service extends android.app.Service {
         if (acceptor != null) {
             try {
                 acceptor.close();
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 // We don't care
             }
         }
@@ -139,11 +146,9 @@ public class Service extends android.app.Service {
         try {
             executor.shutdownNow();
             executor.awaitTermination(10, TimeUnit.SECONDS);
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             // Too bad
-        }
-        finally {
+        } finally {
             started = false;
 
             // Unfortunately, we have no way to clean up some Binder-based callbacks
@@ -181,22 +186,17 @@ public class Service extends android.app.Service {
                     executor.submit(new RebootMonitor());
 
                     started = true;
-                }
-                catch (UnknownHostException e) {
+                } catch (UnknownHostException e) {
                     Log.e(TAG, e.getMessage());
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
-            }
-            else {
+            } else {
                 Log.w(TAG, "Service is already running");
             }
-        }
-        else if (ACTION_STOP.equals(action)) {
+        } else if (ACTION_STOP.equals(action)) {
             stopSelf();
-        }
-        else {
+        } else {
             Log.e(TAG, "Unknown action " + action);
         }
 
@@ -214,10 +214,58 @@ public class Service extends android.app.Service {
     }
 
     private void rebootDevice() {
+        int WAIT_FOR_ENTER_ROOT_MODE = 3000;
+
         try {
-            Runtime.getRuntime().exec("su");
-            Runtime.getRuntime().exec("reboot");
-        } catch (IOException ignored) {
+            java.lang.Process process = Runtime.getRuntime().exec("su");
+            DataOutputStream os = new DataOutputStream(process.getOutputStream());
+            Thread.sleep(WAIT_FOR_ENTER_ROOT_MODE); // it may be 2 ~ 3 seconds
+            os.writeBytes("reboot \n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void removeActions() {
+        String fileContent = FileHelper.ReadFile();
+        if (fileContent.contains("starting")) {
+            String[] separated = fileContent.split(" ");
+            String id = separated[1];
+            id = id.substring(1, id.length() - 1);
+
+            APIClient.getAPIService().removeAction(id).enqueue(new Callback<Boolean>() {
+                @Override
+                public void onResponse(Call<Boolean> call, Response<Boolean> response) {
+                    deleteLogFile();
+
+                    if (response.isSuccessful()) {
+                        Log.i(TAG, "Deleted action successfully");
+                    } else {
+                        Log.e(TAG, "Request failed, Please try again!");
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<Boolean> call, Throwable t) {
+                    if (!call.isCanceled()) {
+                        deleteLogFile();
+                        Log.e(TAG, "Request failed");
+                    }
+                }
+            });
+        }
+    }
+
+    private void deleteLogFile() {
+        File file = new File(path + fileName);
+        if (file.exists()) {
+            if (file.delete()) {
+                Log.d(TAG, "file Deleted");
+            } else {
+                Log.d(TAG, "file not Deleted");
+            }
         }
     }
 
@@ -235,8 +283,7 @@ public class Service extends android.app.Service {
 
             try {
                 acceptor.close();
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
@@ -251,16 +298,13 @@ public class Service extends android.app.Service {
                     Connection conn = new Connection(acceptor.accept());
                     executor.submit(conn);
                 }
-            }
-            catch (IOException e) {
-            }
-            finally {
+            } catch (IOException e) {
+            } finally {
                 Log.i(TAG, "Server stopping");
 
                 try {
                     acceptor.close();
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                 }
 
                 stopSelf();
@@ -280,8 +324,7 @@ public class Service extends android.app.Service {
 
                 try {
                     socket.close();
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
@@ -302,67 +345,67 @@ public class Service extends android.app.Service {
                     router = new MessageRouter(writer);
 
                     router.register(Wire.MessageType.DO_IDENTIFY,
-                            new DoIdentifyResponder(getBaseContext()));
+                        new DoIdentifyResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.DO_ADD_ACCOUNT_MENU,
-                            new DoAddAccountMenuResponder(getBaseContext()));
+                        new DoAddAccountMenuResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.DO_REMOVE_ACCOUNT,
-                            new DoRemoveAccountResponder(getBaseContext()));
+                        new DoRemoveAccountResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_ACCOUNTS,
-                            new GetAccountsResponder(getBaseContext()));
+                        new GetAccountsResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_BROWSERS,
-                            new GetBrowsersResponder(getBaseContext()));
+                        new GetBrowsersResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_CLIPBOARD,
-                            new GetClipboardResponder(getBaseContext()));
+                        new GetClipboardResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_DISPLAY,
-                            new GetDisplayResponder(getBaseContext()));
+                        new GetDisplayResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_PROPERTIES,
-                            new GetPropertiesResponder(getBaseContext()));
+                        new GetPropertiesResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_RINGER_MODE,
-                            new GetRingerModeResponder(getBaseContext()));
+                        new GetRingerModeResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_SD_STATUS,
-                            new GetSdStatusResponder(getBaseContext()));
+                        new GetSdStatusResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_VERSION,
-                            new GetVersionResponder(getBaseContext()));
+                        new GetVersionResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_WIFI_STATUS,
-                            new GetWifiStatusResponder(getBaseContext()));
+                        new GetWifiStatusResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_ROOT_STATUS,
-                            new GetRootStatusResponder(getBaseContext()));
+                        new GetRootStatusResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.GET_BLUETOOTH_STATUS,
                         new GetBluetoothStatusResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.SET_CLIPBOARD,
-                            new SetClipboardResponder(getBaseContext()));
+                        new SetClipboardResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.SET_KEYGUARD_STATE,
-                            new SetKeyguardStateResponder(getBaseContext()));
+                        new SetKeyguardStateResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.SET_RINGER_MODE,
-                            new SetRingerModeResponder(getBaseContext()));
+                        new SetRingerModeResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.SET_WAKE_LOCK,
-                            new SetWakeLockResponder(getBaseContext()));
+                        new SetWakeLockResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.SET_WIFI_ENABLED,
-                            new SetWifiEnabledResponder(getBaseContext()));
+                        new SetWifiEnabledResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.SET_BLUETOOTH_ENABLED,
                         new SetBluetoothEnabledResponder(getBaseContext()));
 
                     router.register(Wire.MessageType.SET_MASTER_MUTE,
-                            new SetMasterMuteResponder(getBaseContext()));
+                        new SetMasterMuteResponder(getBaseContext()));
 
                     for (AbstractMonitor monitor : monitors) {
                         monitor.peek(writer);
@@ -377,17 +420,13 @@ public class Service extends android.app.Service {
 
                         router.route(envelope);
                     }
-                }
-                catch (InvalidProtocolBufferException e) {
+                } catch (InvalidProtocolBufferException e) {
                     Log.e(TAG, e.getMessage());
                     e.printStackTrace();
-                }
-                catch (IOException e) {
-                }
-                catch (Exception e) {
+                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
-                }
-                finally {
+                } finally {
                     Log.i(TAG, "Connection stopping");
 
                     writers.remove(writer);
@@ -398,8 +437,7 @@ public class Service extends android.app.Service {
 
                     try {
                         socket.close();
-                    }
-                    catch (IOException e) {
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
@@ -465,8 +503,7 @@ public class Service extends android.app.Service {
                         for (String line = adbdStateReader.readLine(); line != null; line = adbdStateReader.readLine()) {
                             if (adbStatePattern.matcher(line).lookingAt()) {
                                 currentAdbState = line.split(":").length == 2 ? line.split(":")[1] : "";
-                            }
-                            else if (usbStatePattern.matcher(line).lookingAt()) {
+                            } else if (usbStatePattern.matcher(line).lookingAt()) {
                                 currentUsbState = line.split(":").length == 2 ? line.split(":")[1] : "";
                             }
                         }
@@ -518,40 +555,43 @@ public class Service extends android.app.Service {
 
         @Override
         public void run() {
-            Log.d(TAG, "Starting rebooting monitor thread");
+            Log.i(TAG, "Starting rebooting monitor thread");
 
-            /**
-             * If the output of the command will change then by default device will be
-             * considered connected
-             */
             try {
                 while (!isInterrupted()) {
                     Intent intent = new Intent(getApplicationContext(), IdentityActivity.class);
                     String serial = intent.getStringExtra(EXTRA_SERIAL);
-                    if (serial != null) {
-                        APIClient.getAPIService().getAction(serial).enqueue(new Callback<ActionInfo>() {
-                            @Override
-                            public void onResponse(Call<ActionInfo> call, Response<ActionInfo> response) {
-                                ActionInfo result = response.body();
-                                if (response.isSuccessful() && result != null) {
-                                    if (result.action.name.equals("rebootDevice")) {
-                                        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd hh-mm-ss");
-                                        String format = simpleDateFormat.format(new Date());
+                    if (serial == null) {
+                        serial = getProperty("ro.serialno", "unknown");
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            serial = Build.getSerial();
+                        } else {
+                            serial = getProperty("ro.serialno", "unknown");
+                        }
+                    }
 
-                                        String logInfo = "{" + format + "} {" + result.id + "} {" + result.action.name + "} starting";
-                                        FileHelper.saveToFile(logInfo);
+                    APIClient.getAPIService().getAction(serial).enqueue(new Callback<ActionInfo>() {
+                        @Override
+                        public void onResponse(Call<ActionInfo> call, Response<ActionInfo> response) {
+                            ActionInfo result = response.body();
+                            if (response.isSuccessful() && result != null) {
+                                if (result.action.name.equals("rebootDevice")) {
+                                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd hh-mm-ss");
+                                    String format = simpleDateFormat.format(new Date());
 
-                                        rebootDevice();
-                                    }
+                                    String logInfo = "{" + format + "} {" + result.id + "} {" + result.action.name + "} starting";
+                                    FileHelper.saveToFile(logInfo);
+
+                                    rebootDevice();
                                 }
                             }
+                        }
 
-                            @Override
-                            public void onFailure(Call<ActionInfo> call, Throwable t) {
-                                Log.d(TAG, "Failed to get data.");
-                            }
-                        });
-                    }
+                        @Override
+                        public void onFailure(Call<ActionInfo> call, Throwable t) {
+                            Log.e(TAG, "Failed to get data.");
+                        }
+                    });
 
                     Thread.sleep(INTERVAL_MS);
                 }

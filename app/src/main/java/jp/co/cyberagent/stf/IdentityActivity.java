@@ -92,7 +92,6 @@ public class IdentityActivity extends Activity {
         ensureVisibility();
         setContentView(layout);
 
-        removeActions();
         requestPermissions();
     }
 
@@ -180,55 +179,14 @@ public class IdentityActivity extends Activity {
     }
 
     private void requestPermissions() {
-        int REQUEST_PERMISSIONS = 0x01234;
+        int PERMISSIONS_REQUEST_READ_WRITE_STORAGE = 0x01234;
         int readPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
         int writePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
         if (readPermission != PackageManager.PERMISSION_GRANTED || writePermission != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                 new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                REQUEST_PERMISSIONS);
-        }
-    }
-
-    private void removeActions() {
-        String fileContent = FileHelper.ReadFile();
-        if (fileContent.contains("starting")) {
-            String[] separated = fileContent.split(" ");
-            String id = separated[1];
-            id = id.substring(1, id.length()-1);
-
-            APIClient.getAPIService().removeAction(id).enqueue(new Callback<Boolean>() {
-                @Override
-                public void onResponse(Call<Boolean> call, Response<Boolean> response) {
-                    deleteLogFile();
-
-                    if (response.isSuccessful()) {
-                        Log.d(TAG, "Deleted action successfully");
-                    } else {
-                        Log.d(TAG, "Request failed, Please try again!");
-                    }
-                }
-
-                @Override
-                public void onFailure(Call<Boolean> call, Throwable t) {
-                    if (!call.isCanceled()) {
-                        deleteLogFile();
-                        Log.d(TAG, "Request failed");
-                    }
-                }
-            });
-        }
-    }
-
-    private void deleteLogFile() {
-        File file = new File(path + fileName);
-        if (file.exists()) {
-            if (file.delete()) {
-                Log.d(TAG, "file Deleted");
-            } else {
-                Log.d(TAG, "file not Deleted");
-            }
+                PERMISSIONS_REQUEST_READ_WRITE_STORAGE);
         }
     }
 }

@@ -19,6 +19,8 @@ import retrofit2.converter.scalars.ScalarsConverterFactory;
 public class APIClient {
 
     private static final String BASE_URL = "http://39.104.159.114:18000/";
+    private static final int READ_TIME_OUT = 10;
+    private static final int CONNECT_TIME_OUT = 10;
 
     public static APIService getAPIService() {
         OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
@@ -35,8 +37,8 @@ public class APIClient {
         });
 
         OkHttpClient client = httpClient
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(10, TimeUnit.SECONDS)
+                .connectTimeout(READ_TIME_OUT, TimeUnit.SECONDS)
+                .readTimeout(CONNECT_TIME_OUT, TimeUnit.SECONDS)
                 .build();
 
         Gson gson = new GsonBuilder()
