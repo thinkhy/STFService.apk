@@ -1,14 +1,18 @@
 package jp.co.cyberagent.stf;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.Gravity;
@@ -16,12 +20,22 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
+import android.widget.TabHost;
 import android.widget.TextView;
 
+import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import jp.co.cyberagent.stf.api.APIClient;
+import jp.co.cyberagent.stf.io.FileHelper;
 import jp.co.cyberagent.stf.query.GetRootStatusResponder;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+import static jp.co.cyberagent.stf.io.FileHelper.fileName;
+import static jp.co.cyberagent.stf.io.FileHelper.path;
 
 public class IdentityActivity extends Activity {
     private static final String TAG = "IdentityActivity";
@@ -77,6 +91,9 @@ public class IdentityActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         ensureVisibility();
         setContentView(layout);
+
+        removeActions();
+        requestPermissions();
     }
 
     private View createLabel(String text) {
@@ -159,6 +176,59 @@ public class IdentityActivity extends Activity {
                 intent.putExtra(IdentityActivity.EXTRA_SERIAL, serial);
             }
             return intent;
+        }
+    }
+
+    private void requestPermissions() {
+        int REQUEST_PERMISSIONS = 0x01234;
+        int readPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
+        int writePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        if (readPermission != PackageManager.PERMISSION_GRANTED || writePermission != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                REQUEST_PERMISSIONS);
+        }
+    }
+
+    private void removeActions() {
+        String fileContent = FileHelper.ReadFile();
+        if (fileContent.contains("starting")) {
+            String[] separated = fileContent.split(" ");
+            String id = separated[1];
+            id = id.substring(1, id.length()-1);
+
+            APIClient.getAPIService().removeAction(id).enqueue(new Callback<Boolean>() {
+                @Override
+                public void onResponse(Call<Boolean> call, Response<Boolean> response) {
+                    deleteLogFile();
+
+                    if (response.isSuccessful()) {
+                        Log.d(TAG, "Deleted action successfully");
+                    } else {
+                        Log.d(TAG, "Request failed, Please try again!");
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<Boolean> call, Throwable t) {
+                    if (!call.isCanceled()) {
+                        deleteLogFile();
+                        Log.d(TAG, "Request failed");
+                    }
+                }
+            });
+        }
+    }
+
+    private void deleteLogFile() {
+        File file = new File(path + fileName);
+        if (file.exists()) {
+            if (file.delete()) {
+                Log.d(TAG, "file Deleted");
+            } else {
+                Log.d(TAG, "file not Deleted");
+            }
         }
     }
 }
