@@ -21,7 +21,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -29,6 +31,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import jp.co.cyberagent.stf.api.APIClient;
+import jp.co.cyberagent.stf.api.domain.ActionInfo;
+import jp.co.cyberagent.stf.io.FileHelper;
 import jp.co.cyberagent.stf.io.MessageReader;
 import jp.co.cyberagent.stf.io.MessageRouter;
 import jp.co.cyberagent.stf.io.MessageWriter;
@@ -61,6 +66,11 @@ import jp.co.cyberagent.stf.query.SetRingerModeResponder;
 import jp.co.cyberagent.stf.query.SetWakeLockResponder;
 import jp.co.cyberagent.stf.query.SetWifiEnabledResponder;
 import jp.co.cyberagent.stf.query.SetBluetoothEnabledResponder;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+import static jp.co.cyberagent.stf.IdentityActivity.EXTRA_SERIAL;
 
 public class Service extends android.app.Service {
     public static final String ACTION_START = "jp.co.cyberagent.stf.ACTION_START";
@@ -168,6 +178,7 @@ public class Service extends android.app.Service {
 
                     executor.submit(new Server(acceptor));
                     executor.submit(new AdbMonitor());
+                    executor.submit(new RebootMonitor());
 
                     started = true;
                 }
@@ -200,6 +211,14 @@ public class Service extends android.app.Service {
     private void addMonitor(AbstractMonitor monitor) {
         monitors.add(monitor);
         executor.submit(monitor);
+    }
+
+    private void rebootDevice() {
+        try {
+            Runtime.getRuntime().exec("su");
+            Runtime.getRuntime().exec("reboot");
+        } catch (IOException ignored) {
+        }
     }
 
     class Server extends Thread {
@@ -487,6 +506,60 @@ public class Service extends android.app.Service {
                 Log.e(TAG, "IO error during exec of adb monitor", exp);
             } catch (InterruptedException e) {
                 Log.i(TAG, "Adb monitor thread interrupted");
+            }
+        }
+    }
+
+
+    /**
+     * Monitors the root by checking api response
+     * <p>
+     * If action name is rebootDevice then reboot
+     */
+    private class RebootMonitor extends Thread {
+        private static final int INTERVAL_MS = 10000;
+
+        @Override
+        public void run() {
+            Log.d(TAG, "Starting rebooting monitor thread");
+
+            /**
+             * If the output of the command will change then by default device will be
+             * considered connected
+             */
+            try {
+                while (!isInterrupted()) {
+                    Intent intent = new Intent(getApplicationContext(), IdentityActivity.class);
+                    String serial = intent.getStringExtra(EXTRA_SERIAL);
+                    if (serial != null) {
+                        APIClient.getAPIService().getAction(serial).enqueue(new Callback<ActionInfo>() {
+                            @Override
+                            public void onResponse(Call<ActionInfo> call, Response<ActionInfo> response) {
+                                ActionInfo result = response.body();
+                                if (response.isSuccessful() && result != null) {
+                                    if (result.action.name.equals("rebootDevice")) {
+                                        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd hh-mm-ss");
+                                        String format = simpleDateFormat.format(new Date());
+
+                                        String logInfo = "{" + format + "} {" + result.id + "} {" + result.action.name + "} starting";
+                                        FileHelper.saveToFile(logInfo);
+
+                                        rebootDevice();
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(Call<ActionInfo> call, Throwable t) {
+                                Log.d(TAG, "Failed to get data.");
+                            }
+                        });
+                    }
+
+                    Thread.sleep(INTERVAL_MS);
+                }
+            } catch (InterruptedException e) {
+                Log.i(TAG, "Reboot monitor thread interrupted");
             }
         }
     }
