@@ -22,7 +22,7 @@ public class GetRootStatusResponder extends AbstractResponder {
         return Wire.Envelope.newBuilder()
             .setId(envelope.getId())
             .setType(Wire.MessageType.GET_ROOT_STATUS)
-            .setMessage(Wire.GetWifiStatusResponse.newBuilder()
+            .setMessage(Wire.GetRootStatusResponse.newBuilder()
                 .setSuccess(true)
                 .setStatus(rootFlag)
                 .build()
@@ -55,14 +55,31 @@ public class GetRootStatusResponder extends AbstractResponder {
 
     private static boolean checkRootMethod3() {
         Process process = null;
+<<<<<<< HEAD
         try {
             process = Runtime.getRuntime().exec(new String[] { "/system/xbin/which", "su" });
             BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+=======
+        BufferedReader in;
+        try {
+            process = Runtime.getRuntime().exec(new String[] { "/system/xbin/which", "su" });
+            in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+>>>>>>> rootPR
             if (in.readLine() != null) return true;
             return false;
         } catch (Throwable t) {
             return false;
         } finally {
+<<<<<<< HEAD
+=======
+            if (in != null) {
+                try  {
+                    in.close();
+                } catch (Exception ignore) {
+                    // Nothing to do
+                }
+            }
+>>>>>>> rootPR
             if (process != null) process.destroy();
         }
     }
