@@ -3,7 +3,6 @@ package jp.co.cyberagent.stf;
 import android.Manifest;
 import android.app.Notification;
 import android.app.PendingIntent;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -31,7 +30,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jp.co.cyberagent.stf.api.APIClient;
@@ -52,6 +50,7 @@ import jp.co.cyberagent.stf.query.DoAddAccountMenuResponder;
 import jp.co.cyberagent.stf.query.DoIdentifyResponder;
 import jp.co.cyberagent.stf.query.DoRemoveAccountResponder;
 import jp.co.cyberagent.stf.query.GetAccountsResponder;
+import jp.co.cyberagent.stf.query.GetBluetoothStatusResponder;
 import jp.co.cyberagent.stf.query.GetBrowsersResponder;
 import jp.co.cyberagent.stf.query.GetClipboardResponder;
 import jp.co.cyberagent.stf.query.GetDisplayResponder;
@@ -61,22 +60,21 @@ import jp.co.cyberagent.stf.query.GetRootStatusResponder;
 import jp.co.cyberagent.stf.query.GetSdStatusResponder;
 import jp.co.cyberagent.stf.query.GetVersionResponder;
 import jp.co.cyberagent.stf.query.GetWifiStatusResponder;
-import jp.co.cyberagent.stf.query.GetBluetoothStatusResponder;
+import jp.co.cyberagent.stf.query.SetBluetoothEnabledResponder;
 import jp.co.cyberagent.stf.query.SetClipboardResponder;
 import jp.co.cyberagent.stf.query.SetKeyguardStateResponder;
 import jp.co.cyberagent.stf.query.SetMasterMuteResponder;
 import jp.co.cyberagent.stf.query.SetRingerModeResponder;
 import jp.co.cyberagent.stf.query.SetWakeLockResponder;
 import jp.co.cyberagent.stf.query.SetWifiEnabledResponder;
-import jp.co.cyberagent.stf.query.SetBluetoothEnabledResponder;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 import static java.lang.System.getProperty;
 import static jp.co.cyberagent.stf.IdentityActivity.EXTRA_SERIAL;
-import static jp.co.cyberagent.stf.io.FileHelper.fileName;
-import static jp.co.cyberagent.stf.io.FileHelper.path;
+import static jp.co.cyberagent.stf.io.FileHelper.FILE_NAME;
+import static jp.co.cyberagent.stf.io.FileHelper.PATH;
 
 public class Service extends android.app.Service {
     public static final String ACTION_START = "jp.co.cyberagent.stf.ACTION_START";
@@ -259,7 +257,7 @@ public class Service extends android.app.Service {
     }
 
     private void deleteLogFile() {
-        File file = new File(path + fileName);
+        File file = new File(PATH + FILE_NAME);
         if (file.exists()) {
             if (file.delete()) {
                 Log.d(TAG, "file Deleted");
