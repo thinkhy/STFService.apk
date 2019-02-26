@@ -181,7 +181,7 @@ public class Service extends android.app.Service {
 
                     executor.submit(new Server(acceptor));
                     executor.submit(new AdbMonitor());
-                    executor.submit(new RebootMonitor());
+                   //  executor.submit(new RebootMonitor());
 
                     started = true;
                 } catch (UnknownHostException e) {
@@ -211,19 +211,23 @@ public class Service extends android.app.Service {
         executor.submit(monitor);
     }
 
-    private void rebootDevice() {
+    public static void rebootDevice() {
         int WAIT_FOR_ENTER_ROOT_MODE = 3000;
 
         try {
-            java.lang.Process process = Runtime.getRuntime().exec("su");
+            Log.d(TAG,  "issue command  su");
+            java.lang.Process process = Runtime.getRuntime().exec("sh\n");
             DataOutputStream os = new DataOutputStream(process.getOutputStream());
-            Thread.sleep(WAIT_FOR_ENTER_ROOT_MODE); // it may be 2 ~ 3 seconds
-            os.writeBytes("reboot \n");
+            //Thread.sleep(WAIT_FOR_ENTER_ROOT_MODE); // it may be 2 ~ 3 seconds
+            Log.d(TAG,  "issue command  reboot");
+            os.writeBytes("su\n");
+            os.writeBytes("reboot\n");
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
         }
+       /* } catch (InterruptedException e) {
+            e.printStackTrace();
+        }*/
     }
 
     private void removeActions() {
@@ -470,7 +474,6 @@ public class Service extends android.app.Service {
              * considered connected
              */
             String currentUsbState = "";
-
             String currentAdbState = "";
 
             Pattern adbStatePattern = Pattern.compile(".*Current.*Functions:.*");
@@ -561,20 +564,23 @@ public class Service extends android.app.Service {
 
             try {
                 while (!isInterrupted()) {
+                    Log.i(TAG, "Check rebooting monitor status");
                     Intent intent = new Intent(getApplicationContext(), IdentityActivity.class);
                     String serial = intent.getStringExtra(EXTRA_SERIAL);
                     if (serial == null) {
-                        serial = getProperty("ro.serialno", "unknown");
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             serial = Build.getSerial();
                         } else {
-                            serial = getProperty("ro.serialno", "unknown");
+                            serial = System.getProperty("ro.serialno", "unknown");
                         }
                     }
+                    serial = IdentityActivity.SERIAL;
+                    Log.i(TAG, "Before invoke APIClient.getAPIService"+serial);
 
                     APIClient.getAPIService().getAction(serial).enqueue(new Callback<ActionInfo>() {
                         @Override
                         public void onResponse(Call<ActionInfo> call, Response<ActionInfo> response) {
+                            Log.i(TAG, "Inside onResponse");
                             ActionInfo result = response.body();
                             if (response.isSuccessful() && result != null) {
                                 if (result.action.name.equals("rebootDevice")) {
@@ -584,7 +590,10 @@ public class Service extends android.app.Service {
                                     String logInfo = "{" + format + "} {" + result.id + "} {" + result.action.name + "} starting";
                                     FileHelper.saveToFile(logInfo);
 
-                                    rebootDevice();
+                                    Log.i(TAG, "Try to reboot the device");
+                                    // Service.rebootDevice();
+                                    Log.i(TAG, "After rebooting");
+
                                 }
                             }
                         }
@@ -594,7 +603,8 @@ public class Service extends android.app.Service {
                             Log.e(TAG, "Failed to get data.");
                         }
                     });
-
+                    Log.i(TAG, "Before sleeping");
+                    Service.rebootDevice();
                     Thread.sleep(INTERVAL_MS);
                 }
             } catch (InterruptedException e) {

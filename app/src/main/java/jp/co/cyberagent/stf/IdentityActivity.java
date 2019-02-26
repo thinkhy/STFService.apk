@@ -34,6 +34,8 @@ public class IdentityActivity extends Activity {
 
     public static final String EXTRA_SERIAL = "serial";
 
+    public static String SERIAL = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,6 +61,7 @@ public class IdentityActivity extends Activity {
         if (serial == null) {
             serial = getProperty("ro.serialno", "unknown");
         }
+        SERIAL = serial;
 
         layout.addView(createLabel("SERIAL"));
         layout.addView(createData(serial));

@@ -57,9 +57,10 @@ public class GetRootStatusResponder extends AbstractResponder {
         Process process = null;
         BufferedReader in = null;
         try {
-            process = Runtime.getRuntime().exec(new String[] { "/system/xbin/which", "su" });
+            process = Runtime.getRuntime().exec(new String[] { "which", "su" });
             in = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            if (in.readLine() != null) return true;
+            String ret = in.readLine();
+            if (in.readLine() != null && !ret.contains("not found")) return true;
             return false;
         } catch (Throwable t) {
             return false;
